@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Cargo Management System</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body class="auth-page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <h1>Welcome Back</h1>
+          <p class="text-secondary">Please login to your account</p>
+        </div>
+        
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <div class="input-group">
+              <input 
+                type="text" 
+                id="username" 
+                name="username" 
+                placeholder="Enter your username"
+                required 
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-group">
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                placeholder="Enter your password"
+                required 
+              />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            Login
+          </button>
+        </form>
+
+        <div id="message" class="status" style="display: none;"></div>
+        
+        <div class="auth-footer">
+          <p class="text-secondary">
+            Don't have an account? 
+            <a href="/register.html" class="text-primary">Register here</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const messageDiv = document.getElementById('message');
+
+        try {
+          const response = await fetch('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            localStorage.setItem('token', data.token);
+            
+            messageDiv.textContent = 'Login successful! Redirecting...';
+            messageDiv.className = 'status text-success';
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+              window.location.href = '/dashboard.html';
+            }, 2000);
+          } else {
+            messageDiv.textContent = data.message || 'Login failed';
+            messageDiv.className = 'status text-danger';
+            messageDiv.style.display = 'block';
+          }
+        } catch (error) {
+          messageDiv.textContent = 'An error occurred. Please try again.';
+          messageDiv.className = 'status text-danger';
+          messageDiv.style.display = 'block';
+          console.error('Login error:', error);
+        }
+      });
+    </script>
+  </body>
+</html> 

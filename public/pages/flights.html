@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Flights - Cargo Management</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>All Flights</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="card">
+        <button onclick="loadFlights()">Refresh Flights</button>
+        <div id="errorMessage" class="error-message"></div>
+        <table id="flightsTable" border="1" cellpadding="10" cellspacing="0">
+          <thead>
+            <tr>
+              <th>Flight ID</th>
+              <th>Total Capacity (kg)</th>
+              <th>Remaining Capacity (kg)</th>
+              <th>Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      // Check authentication on page load
+      window.addEventListener('load', () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/login.html';
+          return;
+        }
+        loadFlights(); // Load flights on page load
+      });
+
+      // Add token to all fetch requests
+      const originalFetch = window.fetch;
+      window.fetch = async function(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+          };
+        }
+        const response = await originalFetch(url, options);
+        
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login.html';
+          return response;
+        }
+        
+        return response;
+      };
+
+      function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+      }
+
+      async function loadFlights() {
+        try {
+          const response = await fetch("http://localhost:3000/api/flights");
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          }
+          const flights = await response.json();
+          const tableBody = document.querySelector("#flightsTable tbody");
+          tableBody.innerHTML = "";
+
+          if (!Array.isArray(flights) || flights.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5">No flights found.</td></tr>';
+            return;
+          }
+
+          flights.forEach((flight) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${flight.flight_id}</td>
+              <td>${flight.total_capacity}kg</td>
+              <td>${flight.remaining_capacity}kg</td>
+              <td>${new Date(flight.created_at).toLocaleString()}</td>
+              <td>
+                <button onclick="viewFlightStatus('${flight.flight_id}')">View Status</button>
+                <button onclick="viewCheckIns('${flight.flight_id}')">View Check-ins</button>
+              </td>
+            `;
+            tableBody.appendChild(row);
+          });
+        } catch (error) {
+          console.error("Failed to load flights:", error);
+          document.getElementById("errorMessage").innerText = `Error: ${error.message}`;
+        }
+      }
+
+      function viewFlightStatus(flightId) {
+        window.location.href = `/pages/status.html?flightId=${flightId}`;
+      }
+
+      function viewCheckIns(flightId) {
+        window.location.href = `/pages/checkins.html?flightId=${flightId}`;
+      }
+    </script>
+  </body>
+</html> 

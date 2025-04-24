@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flight Status - Cargo Management</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Flight Status</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="card">
+        <form id="statusForm">
+          <div class="form-group">
+            <label for="statusFlightId">Flight ID:</label>
+            <input type="text" id="statusFlightId" required />
+          </div>
+          <button type="submit">Check Status</button>
+        </form>
+        <div id="errorMessage" class="error-message"></div>
+        <div id="flightStatus" class="status"></div>
+      </div>
+    </div>
+
+    <script>
+      // Check authentication on page load
+      window.addEventListener('load', () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/login.html';
+          return;
+        }
+
+        // Get flightId from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const flightId = urlParams.get('flightId');
+        if (flightId) {
+          document.getElementById('statusFlightId').value = flightId;
+          checkFlightStatus(flightId);
+        }
+      });
+
+      // Add token to all fetch requests
+      const originalFetch = window.fetch;
+      window.fetch = async function(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+          };
+        }
+        const response = await originalFetch(url, options);
+        
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login.html';
+          return response;
+        }
+        
+        return response;
+      };
+
+      function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+      }
+
+      async function checkFlightStatus(flightId) {
+        try {
+          const response = await fetch(`http://localhost:3000/api/flight/${flightId}/status`);
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+
+          document.getElementById("flightStatus").innerHTML = `
+            <p><strong>Total Capacity:</strong> ${data.totalCapacity}kg</p>
+            <p><strong>Used Capacity:</strong> ${data.usedCapacity}kg</p>
+            <p><strong>Remaining Capacity:</strong> ${data.remainingCapacity}kg</p>
+            <p><strong>No. of Travelers:</strong> ${data.numTravelers}</p>
+            <p><strong>Average Weight per Traveler:</strong> ${data.avgWeight}kg</p>
+          `;
+          document.getElementById("errorMessage").innerText = "";
+        } catch (error) {
+          console.error("Failed to load flight status:", error);
+          document.getElementById("errorMessage").innerText = `Error: ${error.message}`;
+          document.getElementById("flightStatus").innerHTML = "";
+        }
+      }
+
+      document
+        .getElementById("statusForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const flightId = document.getElementById("statusFlightId").value;
+          checkFlightStatus(flightId);
+        });
+    </script>
+  </body>
+</html> 

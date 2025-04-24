@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Management - Cargo Management System</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logout-btn {
+            padding: 8px 16px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Flight Management</h1>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="window.location.href='/dashboard.html'">Dashboard</button>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Initialize Flight Section -->
+        <div class="row">
+            <div class="card">
+                <h2>Initialize Flight</h2>
+                <form id="initializeFlightForm">
+                    <div class="form-group">
+                        <label for="flightId">Flight ID:</label>
+                        <input type="text" id="flightId" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="totalCapacity">Total Capacity (kg):</label>
+                        <input type="number" id="totalCapacity" value="20000" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Initialize Flight</button>
+                </form>
+                <div id="initializeStatus" class="status"></div>
+            </div>
+
+            <!-- Flight Status Section -->
+            <div class="card">
+                <h2>Flight Status</h2>
+                <form id="statusForm">
+                    <div class="form-group">
+                        <label for="statusFlightId">Flight ID:</label>
+                        <input type="text" id="statusFlightId" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Check Status</button>
+                </form>
+                <div id="flightStatus" class="status"></div>
+            </div>
+        </div>
+
+        <!-- Flights Table Section -->
+        <div class="card">
+            <h2>All Flights</h2>
+            <button class="btn btn-primary" onclick="loadFlights()">Refresh Flights</button>
+            <table id="flightsTable" border="1" cellpadding="10" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Flight ID</th>
+                        <th>Total Capacity (kg)</th>
+                        <th>Remaining Capacity (kg)</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is logged in
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+
+        // Add token to all fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = async function(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+            const response = await originalFetch(url, options);
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+            }
+            
+            return response;
+        };
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        });
+
+        // Initialize Flight Form
+        document.getElementById("initializeFlightForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const flightId = document.getElementById("flightId").value;
+            const totalCapacity = document.getElementById("totalCapacity").value;
+
+            try {
+                const response = await fetch("/api/flight/initialize", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        flightId,
+                        totalCapacity: Number(totalCapacity),
+                    }),
+                });
+                const data = await response.json();
+                document.getElementById("initializeStatus").innerText = data.message;
+                loadFlights(); // Refresh the flights table
+            } catch (error) {
+                document.getElementById("initializeStatus").innerText = "Error: " + error.message;
+            }
+        });
+
+        // Flight Status Form
+        document.getElementById("statusForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const flightId = document.getElementById("statusFlightId").value;
+
+            try {
+                const response = await fetch(`/api/flight/${flightId}/status`);
+                const data = await response.json();
+
+                document.getElementById("flightStatus").innerHTML = `
+                    <p><strong>Total Capacity:</strong> ${data.totalCapacity}kg</p>
+                    <p><strong>Used Capacity:</strong> ${data.usedCapacity}kg</p>
+                    <p><strong>Remaining Capacity:</strong> ${data.remainingCapacity}kg</p>
+                    <p><strong>No. of Travelers:</strong> ${data.numTravelers}</p>
+                    <p><strong>Average Weight per Traveler:</strong> ${data.avgWeight}kg</p>
+                `;
+            } catch (error) {
+                document.getElementById("flightStatus").innerText = "Error: " + error.message;
+            }
+        });
+
+        // Load Flights Function
+        async function loadFlights() {
+            try {
+                const response = await fetch("/api/flights");
+                const flights = await response.json();
+                const tableBody = document.querySelector("#flightsTable tbody");
+                tableBody.innerHTML = "";
+
+                flights.forEach((flight) => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${flight.flight_id}</td>
+                        <td>${flight.total_capacity}kg</td>
+                        <td>${flight.remaining_capacity}kg</td>
+                        <td>${new Date(flight.created_at).toLocaleString()}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Failed to load flights:", error);
+            }
+        }
+
+        // Load flights on page load
+        loadFlights();
+    </script>
+</body>
+</html> 

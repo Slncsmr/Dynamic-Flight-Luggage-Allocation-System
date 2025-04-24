@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Initialize Flight - Cargo Management</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Initialize Flight</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="card">
+        <form id="initializeFlightForm">
+          <div class="form-group">
+            <label for="flightId">Flight ID:</label>
+            <input type="text" id="flightId" required />
+          </div>
+          <div class="form-group">
+            <label for="totalCapacity">Total Capacity (kg):</label>
+            <input type="number" id="totalCapacity" value="20000" required />
+          </div>
+          <button type="submit">Initialize Flight</button>
+        </form>
+        <div id="initializeStatus" class="status"></div>
+      </div>
+    </div>
+
+    <script>
+      // Check authentication on page load
+      window.addEventListener('load', () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Add token to all fetch requests
+      const originalFetch = window.fetch;
+      window.fetch = async function(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+          };
+        }
+        const response = await originalFetch(url, options);
+        
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login.html';
+        }
+        
+        return response;
+      };
+
+      function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+      }
+
+      document
+        .getElementById("initializeFlightForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const flightId = document.getElementById("flightId").value;
+          const totalCapacity = document.getElementById("totalCapacity").value;
+
+          try {
+            const response = await fetch("/api/flight/initialize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                flightId,
+                totalCapacity: Number(totalCapacity),
+              }),
+            });
+            const data = await response.json();
+            document.getElementById("initializeStatus").innerText =
+              data.message;
+          } catch (error) {
+            document.getElementById("initializeStatus").innerText =
+              "Error: " + error.message;
+          }
+        });
+    </script>
+  </body>
+</html> 

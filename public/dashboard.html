@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Cargo Management System</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Cargo Management System</h1>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+    </div>
+
+    <div class="container">
+        <div class="welcome-card card">
+            <h2>Welcome to your Dashboard</h2>
+            <p>Manage your cargo operations efficiently with our system.</p>
+        </div>
+
+        <div class="row">
+            <div class="feature-card clickable" onclick="window.location.href='/flights.html'">
+                <h3>Flight Management</h3>
+                <p>View and manage flight schedules, capacities, and cargo assignments.</p>
+                <div class="card-action">
+                    <span class="action-text">Manage Flights</span>
+                    <span class="action-arrow">→</span>
+                </div>
+            </div>
+            <div class="feature-card clickable" onclick="window.location.href='/cargo-tracking.html'">
+                <h3>Cargo Tracking</h3>
+                <p>Track your cargo in real-time and monitor its status throughout the journey.</p>
+                <div class="card-action">
+                    <span class="action-text">Track Cargo</span>
+                    <span class="action-arrow">→</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is logged in
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flight Check-ins - Cargo Management</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Flight Check-ins</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="card">
+        <div class="form-group">
+          <label for="checkInFlightListId">Flight ID:</label>
+          <input type="text" id="checkInFlightListId" />
+          <button onclick="loadCheckIns()">Load Check-ins</button>
+        </div>
+        <div id="errorMessage" class="error-message"></div>
+        <table id="checkInsTable" border="1" cellpadding="10" cellspacing="0">
+          <thead>
+            <tr>
+              <th>Passenger ID</th>
+              <th>Passenger Name</th>
+              <th>Weight (kg)</th>
+              <th>Price (₹)</th>
+              <th>Check-in Time</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      // Check authentication on page load
+      window.addEventListener('load', () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/login.html';
+          return;
+        }
+
+        // Get flightId from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const flightId = urlParams.get('flightId');
+        if (flightId) {
+          document.getElementById('checkInFlightListId').value = flightId;
+          loadCheckIns();
+        }
+      });
+
+      // Add token to all fetch requests
+      const originalFetch = window.fetch;
+      window.fetch = async function(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+          };
+        }
+        const response = await originalFetch(url, options);
+        
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login.html';
+          return response;
+        }
+        
+        return response;
+      };
+
+      function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+      }
+
+      async function loadCheckIns() {
+        const flightId = document
+          .getElementById("checkInFlightListId")
+          .value.trim();
+        if (!flightId) {
+          document.getElementById("errorMessage").innerText = "Please enter a Flight ID";
+          return;
+        }
+
+        try {
+          const response = await fetch(`http://localhost:3000/api/flight/${flightId}/check-ins`);
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          }
+          const checkIns = await response.json();
+          const tableBody = document.querySelector("#checkInsTable tbody");
+          tableBody.innerHTML = "";
+
+          if (!Array.isArray(checkIns) || checkIns.length === 0) {
+            tableBody.innerHTML =
+              '<tr><td colspan="5">No check-ins found.</td></tr>';
+            return;
+          }
+
+          checkIns.forEach((entry) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${entry.passenger_id}</td>
+              <td>${entry.passenger_name || "N/A"}</td>
+              <td>${entry.weight}</td>
+              <td>${entry.price}</td>
+              <td>${new Date(entry.check_in_time).toLocaleString()}</td>
+            `;
+            tableBody.appendChild(row);
+          });
+        } catch (err) {
+          console.error("Failed to load check-ins:", err);
+          document.getElementById("errorMessage").innerText = `Error: ${err.message}`;
+        }
+      }
+    </script>
+  </body>
+</html> 

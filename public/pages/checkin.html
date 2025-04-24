@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Check-in Cargo - Cargo Management</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Check-in Cargo</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="card">
+        <form id="checkInForm">
+          <div class="form-group">
+            <label for="checkInFlightId">Flight ID:</label>
+            <input type="text" id="checkInFlightId" required />
+          </div>
+          <div class="form-group">
+            <label for="passengerId">Passenger ID:</label>
+            <input type="number" id="passengerId" required />
+          </div>
+          <div class="form-group">
+            <label for="weight">Cargo Weight (kg):</label>
+            <input type="number" id="weight" required />
+          </div>
+          <button type="submit">Check-in Cargo</button>
+        </form>
+        <div id="checkInStatus" class="status"></div>
+      </div>
+    </div>
+
+    <script>
+      // Check authentication on page load
+      window.addEventListener('load', () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Add token to all fetch requests
+      const originalFetch = window.fetch;
+      window.fetch = async function(url, options = {}) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+          };
+        }
+        const response = await originalFetch(url, options);
+        
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/login.html';
+        }
+        
+        return response;
+      };
+
+      function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/login.html';
+      }
+
+      document
+        .getElementById("checkInForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const flightId = document.getElementById("checkInFlightId").value;
+          const passengerId = document.getElementById("passengerId").value;
+          const weight = document.getElementById("weight").value;
+
+          try {
+            const response = await fetch("/api/cargo/check-in", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                flightId,
+                passengerId: Number(passengerId),
+                weight: Number(weight),
+              }),
+            });
+            const data = await response.json();
+            document.getElementById(
+              "checkInStatus"
+            ).innerText = `Success! Price: ₹${data.price}, Remaining Capacity: ${data.remainingCapacity}kg`;
+          } catch (error) {
+            document.getElementById("checkInStatus").innerText =
+              "Error: " + error.message;
+          }
+        });
+    </script>
+  </body>
+</html> 
